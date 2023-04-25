@@ -1,0 +1,171 @@
+﻿#
+# ビルド仕様
+#
+# 説明：
+#    OCI DevOps ビルド・パイプライン から呼び出されます。
+#
+#    ビルド・パイプライン で指定された「ビルド仕様ファイル・パス: build_spec.yaml」をもとに
+#    プロジェクトに含まれた当build_spec.yamlファイルが参照され、docker build コマンドを発行します。
+#    docker build コマンドは プロジェクトに含まれた Dockerfile を参照してアプリケーションビルドを行ないます。 
+#
+# 処理概要：
+#  【１】Dockerコマンドを実行し
+#    【１-１】Maven ビルドを実行し、リモートリポジトリ(Nexus)にデプロイまで行なう。
+#    【１-２】Tomcatコンテナイメージにビルドしたアプリケーションを配置する。
+#    【１-３】Tomcatを起動するコマンドを追加する。
+#   までを行なうコンテナイメージを作成する。
+#  【２】後続のためにコンテナイメージを伝える。
+#
+version: 0.1
+component: build
+timeoutInSeconds: 10000
+runAs: root
+shell: bash
+env:
+  exportedVariables:
+    - PROJECT_NAME
+    - PROJECT_VERSION
+    - BUILDRUN_HASH
+
+steps:
+  - type: Command
+    name: "Export variables"
+    timeoutInSeconds: 40
+    command: |
+      export BUILDRUN_HASH=`echo ${OCI_BUILD_RUN_ID} | rev | cut -c 1-7`
+      echo "BUILDRUN_HASH: " ${BUILDRUN_HASH}
+    onFailure:
+      - type: Command
+        command: |
+          echo "Handling Failure"
+          echo "Failure successfully handled"
+        timeoutInSeconds: 40
+        runAs: root
+# 
+# pom.xml から プロジェクト名 (PROJECT_NAME) を取得する
+# 
+  - type: Command
+    name: "Export Project Name from Pom.xml"
+    timeoutInSeconds: 240
+    command: |
+      export PROJECT_NAME=`mvn -s settings.xml -q -Dexec.executable="echo" -Dexec.args='${project.name}' --non-recursive exec:exec`
+      echo "PROJECT_NAME: " ${PROJECT_NAME}
+    onFailure:
+      - type: Command
+        command: |
+          echo "Handling Failure"
+          echo "Failure successfully handled"
+        timeoutInSeconds: 40
+        runAs: root
+
+# 
+# pom.xml から プロジェクト・バージョン (PROJECT_VERSION) を取得する
+# 
+  - type: Command
+    name: "Export Project Version from Pom.xml"
+    timeoutInSeconds: 240
+    command: |
+      export PROJECT_VERSION=`mvn -s settings.xml -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive exec:exec`
+      echo "PROJECT_VERSION: " ${PROJECT_VERSION}
+    onFailure:
+      - type: Command
+        command: |
+          echo "Handling Failure"
+          echo "Failure successfully handled"
+        timeoutInSeconds: 40
+        runAs: root
+
+  - type: Command
+    name: "Docker Verson"
+    command: |
+      docker version
+    onFailure:
+      - type: Command
+        command: |
+          echo "Failured docker version"
+        timeoutInSeconds: 60
+        runAs: root
+
+  - type: Command
+    name: "Docker Network Info"
+    command: |
+      docker network ls
+    onFailure:
+      - type: Command
+        command: |
+          echo "Failured docker network info"
+        timeoutInSeconds: 60
+        runAs: root
+
+  - type: Command
+    name: "Docker Network Info [bridge]"
+    command: |
+      docker network inspect bridge
+    onFailure:
+      - type: Command
+        command: |
+          echo "Failured docker network info [bridge]"
+        timeoutInSeconds: 60
+        runAs: root
+
+#  - type: Command
+#    name: "Get Docker Image"
+#    command: |
+#      docker pull nrt.ocir.io/nrjlf5npv1v1/oraclejava8/tomcat9:1.0.0
+#    onFailure:
+#      - type: Command
+#        command: |
+#          echo "Failured get docker image"
+#        timeoutInSeconds: 60
+#        runAs: root
+
+#【１】Dockerコマンドを実行し
+#  【１-１】Maven ビルドを実行し、リモートリポジトリ(Nexus)にデプロイまで行なう。
+#  【１-２】Tomcatコンテナイメージにビルドしたアプリケーションを配置する。
+#  【１-３】Tomcatを起動するコマンドを追加する。
+# までを行なうコンテナイメージを作成する。
+# 
+# docker build -t <出力イメージ名>
+#
+#    OCI DevOps プロジェクト の ビルド・パイプライン で指定された
+#    「ビルド仕様ファイル・パス: build_spec.yaml」をもとに
+#    プロジェクトに含まれた当ファイルが参照され、docker build コマンドを発行します。
+#    docker build は プロジェクトに含まれた Dockerfile を参照してアプリケーションビルドを行ないます。 
+# 
+  - type: Command
+    name: "Docker Build"
+    timeoutInSeconds: 3600
+    command: |
+      docker build --progress=plain -t app_image .
+##    onFailure:
+##      - type: Command
+##        command: |
+##          echo "Failured docker build"
+##        timeoutInSeconds: 60
+##        runAs: root
+#
+#  - type: Command
+#    name: "Trivy Image Scan"
+#    timeoutInSeconds: 180
+#    command: |
+#      curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.21.0
+#      trivy image app_image
+#    onFailure:
+#      - type: Command
+#        command: |
+#          echo "Trivy Scan Error"
+#        timeoutInSeconds: 40
+#        runAs: root
+
+#
+#【２】後続のためにコンテナイメージを伝える。
+#
+# outputArtifacts ビルド・ステージで生成されたアーティファクトを指定
+#   - name：ビルド・パイプラインの後続のステージでこの名前が識別子として使用される
+#   - type：出力アーティファクトの種類
+#   - location：ビルド仕様ファイルのいずれかのステップに基づいてビルドされたDockerイメージ・タグ
+# 
+outputArtifacts:
+  - name: app_image
+    type: DOCKER_IMAGE
+    location: app_image:latest
