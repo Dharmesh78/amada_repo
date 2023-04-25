@@ -17,7 +17,7 @@
 
 # >>> フロント npmインストール＆ビルド
 
-FROM nrt.ocir.io/nrjlf5npv1v1/node:14.21.3 AS builder-react
+FROM nrt.ocir.io/nrjlf5npv1v/node:14.21.3 AS builder-react
 
 WORKDIR /tmp
 
