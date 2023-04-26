@@ -136,8 +136,7 @@ steps:
     name: "Docker Build"
     timeoutInSeconds: 3600
     command: |
-#      docker build --progress=plain -t app_image .
-       docker build --progress=plain -t app_image .
+      docker build -t app_image .
 ##    onFailure:
 ##      - type: Command
 ##        command: |
