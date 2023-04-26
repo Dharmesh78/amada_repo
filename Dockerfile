@@ -22,10 +22,10 @@ FROM nrt.ocir.io/nrjlf5npv1v1/node:14.21.3 AS builder-react
 WORKDIR /tmp
 
 COPY ./pom.xml .
-COPY ./settings.xml .
-COPY ./application.properties .
-COPY ./src ./src
-COPY ./client-src ./client-src
+#COPY ./settings.xml .
+#COPY ./application.properties .
+#COPY ./src ./src
+#COPY ./client-src ./client-src
 
 WORKDIR /tmp/client-src
 
