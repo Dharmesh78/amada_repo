@@ -32,6 +32,7 @@ WORKDIR /tmp/client-src
 RUN npm cache verify
 
 RUN npm install
+RUN sleep 11m
 
 RUN npm run build
 
