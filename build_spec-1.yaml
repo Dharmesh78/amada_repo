@@ -136,7 +136,8 @@ steps:
     name: "Docker Build"
     timeoutInSeconds: 3600
     command: |
-      docker build -t app_image .
+      touch app_image.txt
+##      docker build -t app_image .
 ##    onFailure:
 ##      - type: Command
 ##        command: |
@@ -165,7 +166,7 @@ steps:
 #   - type：出力アーティファクトの種類
 #   - location：ビルド仕様ファイルのいずれかのステップに基づいてビルドされたDockerイメージ・タグ
 # 
-outputArtifacts:
-  - name: app_image
-    type: DOCKER_IMAGE
-    location: app_image:latest
+# outputArtifacts:
+#   - name: app_image
+#     type: DOCKER_IMAGE
+#     location: app_image:latest
